@@ -9,8 +9,6 @@ GREEN = "\033[92m"
 YELLOW= "\033[93m"
 CYAN  = "\033[96m"
 BOLD  = "\033[1m"
-
-# clear screen
 def clear_screen():
     os.system('cls' if os.name == 'nt' else 'clear')
 
