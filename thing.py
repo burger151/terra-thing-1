@@ -73,7 +73,6 @@ def get_bet(bankroll):
             print("Invalid bet amount.")
         except ValueError:
             print("Please enter a valid number.")
-
 def play_round(bankroll):
     print(f"\nYour current bankroll: {GREEN}${bankroll}{RESET}")
     bet = get_bet(bankroll)
@@ -101,7 +100,6 @@ def play_round(bankroll):
 
     # player turn
     can_double = bankroll >= (bet * 2)
-
     while True:
         display_board(player_hand, dealer_hand, bankroll, bet, hide_dealer=True)
         player_val = calculate_hand(player_hand)
@@ -139,7 +137,6 @@ def play_round(bankroll):
     # who won???
     player_final = calculate_hand(player_hand)
     dealer_final = calculate_hand(dealer_hand)
-
     if dealer_final > 21:
         print(f"{GREEN}{BOLD}dealer busted, you win +${bet}{RESET}")
         return bankroll + bet
@@ -158,15 +155,13 @@ bankroll = 1000
 while True:
     clear_screen()
     if bankroll <= 0:
-        print(f"{RED}{BOLD}you ran out of money! game over.{RESET}")
+        print(f"{RED}{BOLD}you ran out of money.{RESET}")
         break
-
+    # this is a great system
     bankroll = play_round(bankroll)
-
     if bankroll <= 0:
-        print(f"\n{RED}{BOLD}you went broke! better luck next time.{RESET}")
+        print(f"\n{RED}{BOLD}you are now broke.{RESET}")
         break
-
     print(f"\n{BOLD}updated bankroll:{RESET} {GREEN}${bankroll}{RESET}")
     again = input("\nplay another hand? (y/n): ").strip().lower()
     if again != 'y':
