@@ -42,9 +42,10 @@ def render_hand(hand, hide_first=False):
     if hide_first:
         return f"{CYAN}[??]{RESET} " + " ".join(render_card(c) for c in hand[1:])
     return " ".join(render_card(c) for c in hand)
-def display_board(player_hand, dealer_hand, hide_dealer=True):
+def display_board(player_hand, dealer_hand, bankroll, bet, hide_dealer=True):
     clear_screen()
-    print(f"{BOLD}=== BLACKJACK ==={RESET}\n")
+    print(f"{BOLD}=== BLACKJACK ==={RESET}")
+    print(f"Bankroll: {GREEN}${bankroll}{RESET} | Current Bet: {YELLOW}${bet}{RESET}\n")
     
     if hide_dealer:
         print(f"Dealer's Hand: {render_hand(dealer_hand, hide_first=True)}")
@@ -63,7 +64,20 @@ def create_deck():
 
 
 # play round
-def play_round():
+def get_bet(bankroll):
+    while True:
+        try:
+            bet = int(input(f"Place your bet (1-{bankroll}): $"))
+            if 1 <= bet <= bankroll:
+                return bet
+            print("Invalid bet amount.")
+        except ValueError:
+            print("Please enter a valid number.")
+
+def play_round(bankroll):
+    print(f"\nYour current bankroll: {GREEN}${bankroll}{RESET}")
+    bet = get_bet(bankroll)
+
     deck = create_deck()
     player_hand = [deck.pop(), deck.pop()]
     dealer_hand = [deck.pop(), deck.pop()]
@@ -72,66 +86,89 @@ def play_round():
     dealer_val = calculate_hand(dealer_hand)
 
     if player_val == 21 and dealer_val == 21:
-        display_board(player_hand, dealer_hand, hide_dealer=False)
+        display_board(player_hand, dealer_hand, bankroll, bet, hide_dealer=False)
         print(f"{YELLOW}both have blackjack. its a push, but also how?{RESET}")
-        return "push"
+        return bankroll
     elif player_val == 21:
-        display_board(player_hand, dealer_hand, hide_dealer=False)
-        print(f"{GREEN}{BOLD}blackjack, you won. but how did you get so lucky?{RESET}")
-        return "win"
+        display_board(player_hand, dealer_hand, bankroll, bet, hide_dealer=False)
+        payout = int(bet * 1.5)
+        print(f"{GREEN}{BOLD}blackjack, you won. but how did you get so lucky? (+${payout}){RESET}")
+        return bankroll + payout
+    elif dealer_val == 21:
+        display_board(player_hand, dealer_hand, bankroll, bet, hide_dealer=False)
+        print(f"{RED}dealer has blackjack. you lose -${bet}.{RESET}")
+        return bankroll - bet
 
     # player turn
+    can_double = bankroll >= (bet * 2)
+
     while True:
-        display_board(player_hand, dealer_hand, hide_dealer=True)
+        display_board(player_hand, dealer_hand, bankroll, bet, hide_dealer=True)
         player_val = calculate_hand(player_hand)
 
         if player_val > 21:
-            print(f"{RED}{BOLD}you went over 21 and bust. you lose.{RESET}")
-            return "loss"
+            print(f"{RED}{BOLD}you went over 21 and bust. you lose -${bet}.{RESET}")
+            return bankroll - bet
 
-        action = input("would you like to [h]it or [s]tand? ").strip().lower()
+        options = "[h]it, [s]tand"
+        if can_double and len(player_hand) == 2:
+            options += ", or [d]ouble down"
+
+        action = input(f"action ({options}): ").strip().lower()
         if action == 'h':
             player_hand.append(deck.pop())
         elif action == 's':
             break
+        elif action == 'd' and can_double and len(player_hand) == 2:
+            bet *= 2
+            player_hand.append(deck.pop())
+            display_board(player_hand, dealer_hand, bankroll, bet, hide_dealer=True)
+            player_val = calculate_hand(player_hand)
+            if player_val > 21:
+                print(f"{RED}{BOLD}busted on double down! you lose -${bet}.{RESET}")
+                return bankroll - bet
+            break
 
     # dealer turn
-    display_board(player_hand, dealer_hand, hide_dealer=False)
+    display_board(player_hand, dealer_hand, bankroll, bet, hide_dealer=False)
     while calculate_hand(dealer_hand) < 17:
         print("dealer hits...")
         dealer_hand.append(deck.pop())
-        display_board(player_hand, dealer_hand, hide_dealer=False)
+        display_board(player_hand, dealer_hand, bankroll, bet, hide_dealer=False)
 
     # who won???
     player_final = calculate_hand(player_hand)
     dealer_final = calculate_hand(dealer_hand)
 
     if dealer_final > 21:
-        print(f"{GREEN}{BOLD}dealer busted, you win{RESET}")
-        return "win"
+        print(f"{GREEN}{BOLD}dealer busted, you win +${bet}{RESET}")
+        return bankroll + bet
     elif player_final > dealer_final:
-        print(f"{GREEN}{BOLD}you won with ({player_final} to {dealer_final}){RESET}")
-        return "win"
+        print(f"{GREEN}{BOLD}you won with ({player_final} to {dealer_final}) +${bet}{RESET}")
+        return bankroll + bet
     elif dealer_final > player_final:
-        print(f"{RED}dealer wins. ({dealer_final} to {player_final}){RESET}")
-        return "loss"
+        print(f"{RED}dealer wins. ({dealer_final} to {player_final}) -${bet}{RESET}")
+        return bankroll - bet
     else:
         print(f"{YELLOW}push. its a tie. ({player_final} vs {dealer_final}){RESET}")
-        return "push"
+        return bankroll
 
 # now play, fool
-wins, losses, pushes = 0, 0, 0
+bankroll = 1000
 while True:
-    result = play_round()
-    if result == "win":
-        wins += 1
-    elif result == "loss":
-        losses += 1
-    elif result == "push":
-        pushes += 1
+    clear_screen()
+    if bankroll <= 0:
+        print(f"{RED}{BOLD}you ran out of money! game over.{RESET}")
+        break
 
-    print(f"\n{BOLD}scoreboard:{RESET} wins: {wins} | losses: {losses} | pushes: {pushes}")
+    bankroll = play_round(bankroll)
+
+    if bankroll <= 0:
+        print(f"\n{RED}{BOLD}you went broke! better luck next time.{RESET}")
+        break
+
+    print(f"\n{BOLD}updated bankroll:{RESET} {GREEN}${bankroll}{RESET}")
     again = input("\nplay another hand? (y/n): ").strip().lower()
     if again != 'y':
-        print("good choice, dont get addicted")
+        print(f"good choice, walked away with {GREEN}${bankroll}{RESET}")
         break
